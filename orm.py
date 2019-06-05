@@ -34,7 +34,7 @@ def select(sql, args, size=None):
     conn = sqlite3.connect('pyweb.db')
     try:
         cursor = conn.cursor()
-        cursor.execute(sql.replace('?', '%s'), args or ())
+        cursor.execute(sql)
         rs = cursor.fetchall()
         cursor.close()
     except BaseException as e:
@@ -176,6 +176,11 @@ class Model(dict, metaclass=ModelMetaclass):
         field = self.__mappings__[key]
         if isinstance(field, StringField):
             value = '\'%s\'' % value
+        if isinstance(field, BooleanField):
+            if value == False :
+                value = 0
+            else :
+                value = 1
         return value
 
     @classmethod
@@ -230,10 +235,15 @@ class Model(dict, metaclass=ModelMetaclass):
     @classmethod
     def find(cls, pk):
         ' find object by primary key. '
-        rs = select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
+        rs = select('%s where %s=\'%s\'' % (cls.__select__, cls.__primary_key__, pk), None)
         if len(rs) == 0:
             return None
-        return cls(**rs[0])
+        data = dict()
+        i = 0
+        for k,v in cls.__mappings__.items():
+            data[k] = rs[0][i]
+            i = i + 1
+        return cls(**data)
 
     def save(self):
         args = list(map(self.getValueForDb, self.__fields__))
