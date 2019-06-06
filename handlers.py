@@ -23,7 +23,8 @@ def index(request):
     print(users)
     return {
         '__template__': 'test.html',
-        'users': users
+        'users': users,
+        '__user__':users[0]
     }
 
 @get('/blogs/')
@@ -36,7 +37,8 @@ def blogs(request):
     ]
     return {
         '__template__': 'blogs.html',
-        'blogs': blogs
+        'blogs': blogs,
+        '__user__':request.__user__
     }
 
 @get('/api/users')
