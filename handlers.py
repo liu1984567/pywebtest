@@ -17,8 +17,12 @@ from config import configs
 COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs.session.secret
 
+statistics = [0, 0, 0]
+
 @get('/')
 def index(request):
+    statistics[0] = statistics[0] + 1
+    print(statistics[0])
     users = User.findAll()
     print(users)
     return {
@@ -29,6 +33,8 @@ def index(request):
 
 @get('/blogs/')
 def blogs(request):
+    statistics[1] = statistics[1] + 1
+    print(statistics[1])
     summary = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
     blogs = [
         Blog(id='1', name='Test Blog', summary=summary, created_at=time.time()-120),

@@ -47,6 +47,8 @@ def init_jinja2(app, **kw):
 def logger_factory(app, handler):
     @asyncio.coroutine
     def logger(request):
+        print('logger_factory')
+        print(handler)
         logging.info('Request: %s %s' % (request.method, request.path))
         # yield from asyncio.sleep(0.3)
         return (yield from handler(request))
@@ -56,6 +58,8 @@ def logger_factory(app, handler):
 def data_factory(app, handler):
     @asyncio.coroutine
     def parse_data(request):
+        print('data_factory')
+        print(handler)
         if request.method == 'POST':
             if request.content_type.startswith('application/json'):
                 request.__data__ = yield from request.json()
@@ -70,6 +74,8 @@ def data_factory(app, handler):
 def auth_factory(app, handler):
     @asyncio.coroutine
     def auth(request):
+        print('auth_factory')
+        print(handler)
         logging.info('check user: %s %s' % (request.method, request.path))
         request.__user__ = None
         cookie_str = request.cookies.get(COOKIE_NAME)
@@ -87,6 +93,8 @@ def auth_factory(app, handler):
 def response_factory(app, handler):
     @asyncio.coroutine
     def response(request):
+        print('response_factory')
+        print(handler)
         logging.info('Response handler...')
         r = yield from handler(request)
         if isinstance(r, web.StreamResponse):
