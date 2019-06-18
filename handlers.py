@@ -21,14 +21,9 @@ statistics = [0, 0, 0]
 
 @get('/')
 def index(request):
-    statistics[0] = statistics[0] + 1
-    print(statistics[0])
-    users = User.findAll()
-    print(users)
     return {
-        '__template__': 'test.html',
-        'users': users,
-        '__user__':users[0]
+        '__template__': 'index.html',
+        '__user__': request.__user__
     }
 
 @get('/blogs/')
@@ -65,9 +60,10 @@ def user2cookie(user, max_age):
     return '-'.join(L)
 
 @get('/register')
-def register():
+def register(request):
     return {
-        '__template__': 'register.html'
+        '__template__': 'register.html',
+        '__user__':request.__user__
     }
 
 @get('/signin')
@@ -137,6 +133,33 @@ def api_register_user(*, email, name, passwd):
     r.content_type = 'application/json'
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
+
+@get('/manage/blogs/create')
+def manage_create_blog(request):
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs',
+        '__user__' : request.__user__
+    }
+
+@get('/api/blogs/{id}')
+def api_get_blog(*, id):
+    blog = yield from Blog.find(id)
+    return blog
+
+@post('/api/blogs')
+def api_create_blog(request, *, name, summary, content):
+    check_admin(request)
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content cannot be empty.')
+    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
+    yield from blog.save()
+    return blog
 
 @asyncio.coroutine
 def cookie2user(cookie_str):
