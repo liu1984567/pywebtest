@@ -41,6 +41,7 @@ def select(sql, args, size=None):
         print(e)
         rs = None
     conn.close()
+    print(rs)
     return rs
 
 def execute(sql, args, autocommit=True):
@@ -176,6 +177,8 @@ class Model(dict, metaclass=ModelMetaclass):
         field = self.__mappings__[key]
         if isinstance(field, StringField):
             value = '\'%s\'' % value
+        if isinstance(field, TextField):
+            value = '\'%s\'' % value
         if isinstance(field, BooleanField):
             if value == False :
                 value = 0
@@ -223,14 +226,14 @@ class Model(dict, metaclass=ModelMetaclass):
     @classmethod
     def findNumber(cls, selectField, where=None, args=None):
         ' find number by select and where. '
-        sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
+        sql = ['select %s from %s' % (selectField, cls.__table__)]
         if where:
             sql.append('where')
             sql.append(where)
         rs = select(' '.join(sql), args, 1)
         if len(rs) == 0:
             return None
-        return rs[0]['_num_']
+        return rs[0][0]
 
     @classmethod
     def find(cls, pk):
@@ -251,6 +254,7 @@ class Model(dict, metaclass=ModelMetaclass):
         rows = execute(self.__insert__, args)
         if rows != 1:
             logging.warn('failed to insert record: affected rows: %s' % rows)
+        return rows
 
     def update(self):
         args = list(map(self.getValue, self.__fields__))

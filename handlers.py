@@ -10,7 +10,7 @@ from aiohttp import web
 
 from coroweb import get, post
 
-from apis import APIValueError, APIResourceNotFoundError
+from apis import Page, APIValueError, APIResourceNotFoundError, APIPermissionError
 from models import User, Comment, Blog, next_id
 from config import configs
 
@@ -18,6 +18,16 @@ COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs.session.secret
 
 statistics = [0, 0, 0]
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
+
 
 @get('/')
 def index(request):
@@ -134,6 +144,27 @@ def api_register_user(*, email, name, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+@get('/blog/{id}')
+def get_blog(id):
+    blog = Blog.find(id)
+    #comments = Comment.findAll('blog_id=?', [id], orderBy='created_at desc')
+    #for c in comments:
+    #    c.html_content = text2html(c.content)
+    #blog.html_content = markdown2.markdown(blog.content)
+    return {
+        '__template__': 'blogs.html',
+        'blog': blogs
+       # 'comments': comments
+    }
+
+@get('/manage/blogs')
+def manage_blogs(request, *, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page),
+        '__user__':request.__user__
+    }
+
 @get('/manage/blogs/create')
 def manage_create_blog(request):
     return {
@@ -143,11 +174,28 @@ def manage_create_blog(request):
         '__user__' : request.__user__
     }
 
+@get('/api/blogs')
+def api_blogs(request, *, page='1'):
+    page_index = get_page_index(page)
+    num = Blog.findNumber('count(id)')
+    print('num {}'.format(num))
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    print(p)
+    sql_where = 'user_id=\'{}\''.format(request.__user__.id)
+    sql_orderby = 'created_at desc limit {},{}'.format(p.offset, p.limit)
+    blogs = Blog.findAll(sql_where, None, orderBy=sql_orderby)
+    return dict(page=p, blogs=blogs)
+
 @get('/api/blogs/{id}')
 def api_get_blog(*, id):
-    blog = yield from Blog.find(id)
+    blog = Blog.find(id)
     return blog
 
+def check_admin(request):
+    if request.__user__ is None:
+        raise APIPermissionError()
 @post('/api/blogs')
 def api_create_blog(request, *, name, summary, content):
     check_admin(request)
@@ -158,7 +206,8 @@ def api_create_blog(request, *, name, summary, content):
     if not content or not content.strip():
         raise APIValueError('content', 'content cannot be empty.')
     blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
-    yield from blog.save()
+    if blog.save() < 0:
+        raise APIOperateFailedError('insert', 'failed to insert blog into DB')
     return blog
 
 @asyncio.coroutine
